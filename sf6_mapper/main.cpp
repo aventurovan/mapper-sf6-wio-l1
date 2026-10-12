@@ -22,7 +22,6 @@
 #include "MapperMesh.h"
 #include "MapLog.h"
 #include "MapperUI.h"
-#include "RptNames.h"
 
 // ---------------- konfiguracja ----------------
 #define SF6_FREQ              869.618f
@@ -71,7 +70,6 @@ StdRNG fast_rng;
 SimpleMeshTables tables;
 MapperMesh the_mesh(radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 MapLog maplog;
-RptNames rpt_names;
 SerialBLEInterface ble;
 MapperUI ui;
 MapperStatus status;
@@ -325,10 +323,15 @@ static void startSession() {
   memset(status.recent, 0, sizeof(status.recent));
 }
 
+// repeater na ekranie: pierwsze 2 bajty klucza (XXXX); nazwy zna serwer
+static void rptLabel(const uint8_t* prefix, char* dest, size_t sz) {
+  snprintf(dest, sz, "%02X%02X", prefix[0], prefix[1]);
+}
+
 // lista ostatnich repeaterow: bez powtorzen, najnowszy na gorze
 static void addRecent(const MapResp& r, uint8_t hh, uint8_t mm) {
   char nm[17];
-  rpt_names.label(r.prefix, nm, sizeof(nm));
+  rptLabel(r.prefix, nm, sizeof(nm));
   int pos = MAP_RECENT - 1;
   for (int i = 0; i < MAP_RECENT; i++) {
     if (status.recent[i].valid && strcmp(status.recent[i].name, nm) == 0) { pos = i; break; }
@@ -468,7 +471,7 @@ static void finishPing() {
     uint32_t t = nowUnix();
     if (t) localParts(t, &hh, &mm, NULL, NULL, NULL, NULL);
     for (int i = n - 1; i >= 0; i--) addRecent(resp[order[i]], hh, mm);
-    rpt_names.label(resp[order[0]].prefix, status.last_name, sizeof(status.last_name));
+    rptLabel(resp[order[0]].prefix, status.last_name, sizeof(status.last_name));
     status.last_snr_x4 = resp[order[0]].snr_rx;
     ui.beep(MapperUI::BEEP_HIT);
   }
@@ -513,7 +516,6 @@ static void wipeAndRestart(bool new_identity) {
   ble.disable();
   Bluefruit.Periph.clearBonds();
   maplog.eraseAll();
-  rpt_names.erase();
   InternalFS.remove(SETTINGS_FILE);
   if (new_identity) InternalFS.remove(IDENTITY_FILE);
   delay(800);
@@ -551,9 +553,9 @@ public:
   int  getInfoLines(char lines[][MAP_LINE_SZ], int max) override {
     int n = 0;
     if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "%s", tracker_name);
-    if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "PIN BT: %lu", (unsigned long) BLE_PIN_CODE);
-    if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "Klucz: %02X%02X%02X%02X  fw %s", the_mesh.self_id.pub_key[0],
-                          the_mesh.self_id.pub_key[1], the_mesh.self_id.pub_key[2], the_mesh.self_id.pub_key[3], MAPPER_FW_VERSION);
+    if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "PIN %lu · %02X%02X%02X%02X", (unsigned long) BLE_PIN_CODE,
+                          the_mesh.self_id.pub_key[0], the_mesh.self_id.pub_key[1], the_mesh.self_id.pub_key[2], the_mesh.self_id.pub_key[3]);
+    if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "Firmware: %s", MAPPER_FW_VERSION);
     if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "Pamięć: %d%% · %lu pkt", memPct(), (unsigned long) maplog.pending());
     if (n < max) {
       if (last_sync_ts) {
@@ -562,7 +564,11 @@ public:
         snprintf(lines[n++], MAP_LINE_SZ, "Zrzut: %02u.%02u %02u:%02u", d, mo, hh, mm);
       } else snprintf(lines[n++], MAP_LINE_SZ, "Zrzut: jeszcze nie było");
     }
-    if (n < max) snprintf(lines[n++], MAP_LINE_SZ, "Nazwy RPT: %u", rpt_names.count());
+    if (n < max) {
+      uint16_t mv = status.batt_mv;
+      if (usb_power) snprintf(lines[n++], MAP_LINE_SZ, "Bateria: %u,%02u V USB", mv / 1000, (mv % 1000) / 10);
+      else snprintf(lines[n++], MAP_LINE_SZ, "Bateria: %u,%02u V %d%%", mv / 1000, (mv % 1000) / 10, status.batt_pct);
+    }
     return n;
   }
 };
@@ -646,20 +652,11 @@ static void sendHello() {
   int nl = strlen(tracker_name);
   frame[i++] = (uint8_t) nl;
   memcpy(&frame[i], tracker_name, nl); i += nl;
-  // wersja 3: nazwy repeaterow, ostatni zrzut, sesja
-  uint16_t nc = rpt_names.count(); memcpy(&frame[i], &nc, 2); i += 2;
-  v = rpt_names.crc();   memcpy(&frame[i], &v, 4); i += 4;
+  // wersja 4: ostatni zrzut, sesja, pamiec
   v = last_sync_ts;      memcpy(&frame[i], &v, 4); i += 4;
   frame[i++] = session_no;
   frame[i++] = (uint8_t) memPct();
   ble.writeFrame(frame, i);
-}
-
-static void sendNamesCount() {
-  uint8_t f[3] = { RESP_MAP_NAMES, 0, 0 };
-  uint16_t c = rpt_names.count();
-  memcpy(&f[1], &c, 2);
-  ble.writeFrame(f, 3);
 }
 
 static void handleBleFrame(const uint8_t* cmd, size_t len) {
@@ -725,36 +722,6 @@ static void handleBleFrame(const uint8_t* cmd, size_t len) {
       frame[0] = RESP_MAP_NAME;
       memcpy(&frame[1], tracker_name, nl);
       ble.writeFrame(frame, 1 + nl);
-      break;
-    }
-
-    case CMD_MAP_NAMES_CLEAR:
-      rpt_names.clear();
-      sendNamesCount();
-      break;
-
-    case CMD_MAP_NAMES_ADD: {
-      if (len < 2) { sendErr(MAP_ERR_BAD_ARGS); break; }
-      int n = cmd[1];
-      size_t i = 2;
-      for (int k = 0; k < n; k++) {
-        if (i + MAP_PREFIX_LEN + 1 > len) { sendErr(MAP_ERR_BAD_ARGS); return; }
-        const uint8_t* pfx = &cmd[i]; i += MAP_PREFIX_LEN;
-        int nl = cmd[i++];
-        if (i + nl > len) { sendErr(MAP_ERR_BAD_ARGS); return; }
-        rpt_names.add(pfx, (const char*)&cmd[i], nl);
-        i += nl;
-      }
-      sendNamesCount();
-      break;
-    }
-
-    case CMD_MAP_NAMES_SAVE: {
-      if (len < 5) { sendErr(MAP_ERR_BAD_ARGS); break; }
-      uint32_t crc;
-      memcpy(&crc, &cmd[1], 4);
-      rpt_names.save(crc);
-      sendNamesCount();
       break;
     }
 
@@ -898,14 +865,13 @@ void setup() {
     store.save("_main", the_mesh.self_id);
   }
 
-  // log punktow i nazwy repeaterow na flashu QSPI (2 MB); awaryjnie w pamieci wewnetrznej
+  // log punktow na flashu QSPI (2 MB); awaryjnie w pamieci wewnetrznej
   if (QSPIFlash.begin()) {
     maplog.begin(&QSPIFlash);
-    rpt_names.begin(&QSPIFlash);
+    QSPIFlash.remove("/sf6map/names.bin");          // pozostalosc po 1.1.0 (nazwy repeaterow nie sa juz uzywane)
   } else {
     MESH_DEBUG_PRINTLN("QSPI flash niedostepny - log w InternalFS");
     maplog.begin(&InternalFS, 16 * 1024);
-    rpt_names.begin(&InternalFS);
   }
 
   the_mesh.begin();

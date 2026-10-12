@@ -1,4 +1,4 @@
-# SF6 Mapper – protokół BLE (wersja 3, firmware 1.1.0)
+# SF6 Mapper – protokół BLE (wersja 4, firmware 1.1.1)
 
 Tracker używa tej samej usługi BLE co companion MeshCore (Nordic UART / BLEUart,
 PIN parowania 123456). Nazwa BLE to zawsze `MeshCore-` + nazwa trackera.
@@ -22,9 +22,6 @@ Zwykły companion odpowie błędem `0x01`, więc aplikacja wie, z czym rozmawia.
 | `0xA4` | SET_RUN | `run u8` (0 = stop, 1 = mapuj) |
 | `0xA5` | SET_INTERVAL | `secs u8`: 20, 30, 40, 50 albo 60 |
 | `0xA7` | SET_NAME | nazwa ASCII 2–20 znaków (bez spacji i polskich liter) |
-| `0xA8` | NAMES_CLEAR | – (czyści listę nazw repeaterów w RAM) |
-| `0xA9` | NAMES_ADD | `n u8`, potem n × (`prefix 8 B`, `len u8`, nazwa UTF-8 do 15 B) |
-| `0xAA` | NAMES_SAVE | `crc u32` – zapis listy na flash razem z sumą kontrolną |
 | `33` | SIGN_START | – (jak w companionie) |
 | `34` | SIGN_DATA | dane do podpisu, w kawałkach (łącznie maks. 512 B) |
 | `35` | SIGN_FINISH | – |
@@ -49,9 +46,7 @@ Zwykły companion odpowie błędem `0x01`, więc aplikacja wie, z czym rozmawia.
 | interval | u8 | interwał pingów (s) |
 | fw_len, fw | u8 + tekst | wersja firmware |
 | name_len, name | u8 + tekst | nazwa trackera (nick konta) |
-| names_count | u16 | liczba nazw repeaterów w trackerze (wersja 3) |
-| names_crc | u32 | suma kontrolna listy nazw (CRC-32 bajtów wysłanych w NAMES_ADD) |
-| last_sync | u32 | czas ostatniego zrzutu (UNIX), 0 = nigdy |
+| last_sync | u32 | czas ostatniego zrzutu (UNIX), 0 = nigdy (wersja 4) |
 | session | u8 | numer bieżącej sesji |
 | mem_pct | u8 | zajętość pamięci logu (%) |
 
@@ -85,8 +80,6 @@ Repeater rozpoznajemy po 8-bajtowym prefiksie klucza w `nodes.json`.
 **`0xA4` RUN** – `run u8`, `flags u8`
 
 **`0xA5` INTERVAL** – `secs u8` (aktualny interwał po zmianie)
-
-**`0xA8` NAMES** – `count u16` (odpowiedź na `0xA8`, `0xA9` i `0xAA`)
 
 **`0xA7` NAME** – nowa nazwa (tekst do końca ramki). W nazwie BLE zmiana jest
 widoczna od następnego rozgłoszenia, czyli po rozłączeniu telefonu.

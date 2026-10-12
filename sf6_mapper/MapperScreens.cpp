@@ -56,7 +56,7 @@ static const char* stateLine(const MapperStatus& st, bool blink, bool* warn) {
   return "MAPUJE";
 }
 
-void drawMainScreen(MapperGfx& g, const MapperStatus& st, bool locked, bool blink) {
+void drawMainScreen(MapperGfx& g, const MapperStatus& st, int lock_pct, bool blink) {
   char b[24], c[24];
   topBar(g, st, blink);
 
@@ -82,9 +82,10 @@ void drawMainScreen(MapperGfx& g, const MapperStatus& st, bool locked, bool blin
   g.hline(0, 51, 128);
 
   // ostatni repeater albo blokada
-  if (locked) {
+  if (lock_pct >= 0) {
     g.iconLock(0, 55);
-    g.text(11, 55, "Trzymaj OK (1 s)");
+    if (lock_pct > 0) g.progress(11, 55, 117, 8, lock_pct);
+    else g.text(11, 55, "Trzymaj OK 3 s");
     return;
   }
   if (st.last_n < 0) { g.text(0, 55, "Ostatni: -"); return; }

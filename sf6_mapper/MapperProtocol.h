@@ -6,8 +6,8 @@
  */
 #include <stdint.h>
 
-#define MAPPER_PROTO_VER      3
-#define MAPPER_FW_VERSION     "1.1.0"
+#define MAPPER_PROTO_VER      4
+#define MAPPER_FW_VERSION     "1.1.1"
 
 // aplikacja -> tracker
 #define CMD_MAP_HELLO         0xA0   // []                       -> RESP_MAP_HELLO
@@ -16,9 +16,6 @@
 #define CMD_MAP_SET_RUN       0xA4   // [run u8]                 -> RESP_MAP_RUN
 #define CMD_MAP_SET_INTERVAL  0xA5   // [secs u8] 20/30/40/50/60 -> RESP_MAP_INTERVAL
 #define CMD_MAP_SET_NAME      0xA7   // [nazwa ASCII 2-20 B]     -> RESP_MAP_NAME
-#define CMD_MAP_NAMES_CLEAR   0xA8   // []                       -> RESP_MAP_NAMES [count u16]
-#define CMD_MAP_NAMES_ADD     0xA9   // [n u8][n x (prefix 8 B, len u8, nazwa UTF-8)] -> RESP_MAP_NAMES [count u16]
-#define CMD_MAP_NAMES_SAVE    0xAA   // [crc u32]                -> RESP_MAP_NAMES [count u16]
 
 // podpis Ed25519 kluczem trackera - te same kody i odpowiedzi co companion MeshCore,
 // wiec aplikacja loguje sie trackerem tym samym kodem co companionem
@@ -35,7 +32,6 @@
 #define RESP_MAP_RUN          0xA4
 #define RESP_MAP_INTERVAL     0xA5
 #define RESP_MAP_NAME         0xA7
-#define RESP_MAP_NAMES        0xA8   // [count u16] (odpowiedz na A8/A9/AA, kod komendy w bajcie 0 to zawsze A8)
 #define RESP_OK               0      // jak RESP_CODE_OK companiona
 #define RESP_SIGN_START       19     // [0][max_len u32]
 #define RESP_SIGNATURE        20     // [podpis 64 B]

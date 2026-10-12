@@ -25,6 +25,8 @@ Działa bez telefonu. Dane zrzuca się później przez BLE do aplikacji Mapper S
    - stan mapowania z odliczaniem;
    - duże liczby pingów w sesji i punktów do wysłania;
    - ostatni repeater z SNR.
+
+   Repeatery są pokazywane jako pierwsze 2 bajty klucza (np. `A1B2`). Nazwy zna serwer i pokazuje je na mapie.
 2. **Sesja:** numer, dystans, pingi, skuteczność, czas oraz 5 ostatnich repeaterów z godziną i SNR.
 3. **GPS:** satelity, ruch lub postój, współrzędne, wysokość, data i godzina.
 
@@ -43,26 +45,23 @@ Menu zamyka się samo po 30 s.
 | Bluetooth | wł./wył. |
 | Blokada | blokada ekranu wł./wył. |
 | Wygaszanie | 30 s / 1 min / 2 min / nigdy; przy zasilaniu z USB ekran nie gaśnie |
-| Informacje | nazwa, PIN BT, klucz, firmware, pamięć, ostatni zrzut, liczba nazw RPT |
+| Informacje | nazwa, PIN BT i klucz, firmware, pamięć, ostatni zrzut, napięcie baterii |
 | Serwis | usuń dane, usuń parowania BT, ustawienia fabryczne, nowa tożsamość |
 | Wyłącz | uśpienie trackera; włączenie: naciśnij środek joysticka |
 
 **Operacje z menu Serwis i wyłączanie** wymagają przytrzymania środka joysticka (2–3 s, z paskiem postępu):
 - **Usuń dane:** kasuje punkty. Ostrzega, ile z nich nie zostało wysłanych.
 - **Usuń parowania BT:** telefony trzeba będzie sparować ponownie.
-- **Ustawienia fabryczne:** usuwa ustawienia, nazwę, dane, nazwy repeaterów i parowania BT. Klucz zostaje, więc tracker wraca na to samo konto, choć z nazwą `SF6Map-XXXX`.
+- **Ustawienia fabryczne:** usuwa ustawienia, nazwę, dane i parowania BT. Klucz zostaje, więc tracker wraca na to samo konto, choć z nazwą `SF6Map-XXXX`.
 - **Nowa tożsamość:** jak ustawienia fabryczne, ale z nowym kluczem, czyli nowym kontem. Wymaga dwóch kroków.
 
 Wszystkie ustawienia zostają po wyłączeniu trackera.
 
 **Blokada ekranu** (domyślnie włączona). Gdy ekran zgaśnie, tracker się blokuje. Przycisk tylko zapala ekran, a odblokowanie
-wymaga przytrzymania środka joysticka przez 1 s. Przy zasilaniu z USB (tryb samochodowy) blokada i wygaszanie są wyłączone.
+wymaga przytrzymania środka joysticka przez 3 s (pasek postępu na dole ekranu). Przy zasilaniu z USB (tryb samochodowy) blokada i wygaszanie są wyłączone.
 
 **Postój:** po 4 pingach w jednym miejscu tracker przestaje nadawać. Wznawia pracę dopiero przy prawdziwym ruchu,
 czyli przemieszczeniu w ciągu ~20 s. Skok pozycji po ponownym złapaniu GPS albo odbicia sygnału nie wznawiają pingów.
-
-**Nazwy repeaterów:** aplikacja Mapper SF6 wysyła je przy połączeniu i przy zrzucie danych. Ekran pokazuje wtedy np.
-„Skrzyczne” zamiast początku klucza.
 
 **Ostrzeżenia:**
 - **Pamięć:** przy 80%, 90% i 100% zajętości pojawia się komunikat i sygnał.

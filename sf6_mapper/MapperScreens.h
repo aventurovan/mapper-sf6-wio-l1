@@ -13,7 +13,7 @@ struct MapperRecent {
   bool    valid;
   uint8_t hh, mm;       // czas lokalny odpowiedzi
   int8_t  snr_x4;       // SNR odbioru x4
-  char    name[17];     // nazwa repeatera (UTF-8) albo poczatek klucza
+  char    name[17];     // repeater: pierwsze 2 bajty klucza (XXXX)
 };
 
 struct MapperStatus {
@@ -45,7 +45,7 @@ struct MapperStatus {
   uint32_t sess_pings, sess_hits, sess_dist_m, sess_secs;
   // ostatni ping
   int      last_n;      // -1 brak pingu, 0 = brak odpowiedzi
-  char     last_name[17];
+  char     last_name[17];  // XXXX
   int8_t   last_snr_x4;
   uint32_t last_age_s;
   MapperRecent recent[MAP_RECENT];
@@ -54,7 +54,8 @@ struct MapperStatus {
 
 void mapperFmtSnr(char* dest, int sz, int8_t snr_x4);        // "-6,5"
 
-void drawMainScreen(MapperGfx& g, const MapperStatus& st, bool locked, bool blink);
+// lock_pct: -1 = odblokowany, 0..100 = zablokowany (postep przytrzymania OK)
+void drawMainScreen(MapperGfx& g, const MapperStatus& st, int lock_pct, bool blink);
 void drawSessionScreen(MapperGfx& g, const MapperStatus& st);
 void drawGpsScreen(MapperGfx& g, const MapperStatus& st);
 void drawMenuScreen(MapperGfx& g, const char* title, const char* const* labels, const char* const* values,

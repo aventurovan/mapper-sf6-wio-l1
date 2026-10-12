@@ -5,7 +5,7 @@
  *  ekran glowny: lewo/prawo = strony (stan / sesja / GPS), OK = menu, wstecz = zgas ekran
  *  menu:         gora/dol = wybor, OK/prawo = zmiana, lewo = zmiana w druga strone, wstecz = wyjscie
  *  potwierdzenie: przytrzymaj OK (pasek postepu), wstecz = anuluj
- *  blokada:      zgaszony ekran blokuje (gdy wlaczona i bez zasilania USB); odblokowanie = przytrzymanie OK 1 s
+ *  blokada:      zgaszony ekran blokuje (gdy wlaczona i bez zasilania USB); odblokowanie = przytrzymanie OK 3 s
  */
 
 #ifdef DISPLAY_CLASS
@@ -176,8 +176,7 @@ void MapperUI::loop(const MapperStatus& st) {
       wake();                                       // zgaszony ekran: przycisk tylko budzi
     } else if (_locked) {
       wake();
-      if (ev_ok == BUTTON_EVENT_LONG_PRESS) { _locked = false; flash("Odblokowano", NULL, 900); }
-      else if (ev_back == BUTTON_EVENT_CLICK) screenOff();
+      if (ev_back == BUTTON_EVENT_CLICK) screenOff();   // odblokowanie: przytrzymanie OK (ponizej)
     } else {
       wake();
       switch (_screen) {
@@ -224,8 +223,18 @@ void MapperUI::loop(const MapperStatus& st) {
     _next_refresh = 0;
   }
 
+  // odblokowanie: przytrzymanie OK przez 3 s
+  if (_on && _locked) {
+    if (user_btn.isPressed()) {
+      if (_hold_start == 0) _hold_start = millis();
+      _last_activity = millis();
+      if (millis() - _hold_start >= UI_UNLOCK_MS) { _locked = false; _hold_start = 0; flash("Odblokowano", NULL, 900); }
+      _next_refresh = 0;
+    } else _hold_start = 0;
+  }
+
   // przytrzymanie OK na ekranie potwierdzenia
-  if (_on && _screen == SCR_CONFIRM && _confirm != CF_NEWID1) {
+  if (_on && !_locked && _screen == SCR_CONFIRM && _confirm != CF_NEWID1) {
     if (user_btn.isPressed()) {
       if (_hold_start == 0) _hold_start = millis();
       unsigned long need = (_confirm == CF_POWER || _confirm == CF_BONDS) ? 2000UL : 3000UL;
@@ -264,7 +273,7 @@ void MapperUI::render(const MapperStatus& st) {
     case SCR_MAIN:
       if (_page == 1 && !_locked) drawSessionScreen(_g, st);
       else if (_page == 2 && !_locked) drawGpsScreen(_g, st);
-      else drawMainScreen(_g, st, _locked, _blink);
+      else drawMainScreen(_g, st, _locked ? (_hold_start ? (int)((millis() - _hold_start) * 100 / UI_UNLOCK_MS) : 0) : -1, _blink);
       break;
     case SCR_MENU: {
       char v[MI_COUNT][12];

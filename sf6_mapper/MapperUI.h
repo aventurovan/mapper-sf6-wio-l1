@@ -9,6 +9,7 @@
 
 #define UI_MENU_TIMEOUT_MS   30000UL   // powrot z menu do ekranu glownego
 #define UI_CONFIRM_MS        4000UL    // czas na potwierdzenie STOP w menu
+#define UI_UNLOCK_MS         3000UL    // przytrzymanie OK, ktore odblokowuje ekran
 
 // sterowanie trackerem z menu (implementacja w main.cpp)
 class MapperControl {
