@@ -1,0 +1,61 @@
+name: Build SF6 Mapper (Wio Tracker L1)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  # wersja MeshCore, na ktorej budujemy (zmien, zeby przejsc na nowsza)
+  MESHCORE_REF: a366955cb2f67b8e6842d4f00d2b6a554dddd88a
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pobierz kod mappera
+        uses: actions/checkout@v4
+        with:
+          path: mapper
+
+      - name: Pobierz MeshCore
+        uses: actions/checkout@v4
+        with:
+          repository: meshcore-dev/MeshCore
+          ref: ${{ env.MESHCORE_REF }}
+          path: MeshCore
+
+      - name: Wstaw mapper do MeshCore
+        run: |
+          mkdir -p MeshCore/examples/sf6_mapper
+          cp mapper/sf6_mapper/* MeshCore/examples/sf6_mapper/
+          cat mapper/platformio-sf6.ini >> MeshCore/variants/wio-tracker-l1/platformio.ini
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ env.MESHCORE_REF }}
+
+      - name: Zainstaluj PlatformIO
+        run: pip install -U platformio
+
+      - name: Buduj
+        working-directory: MeshCore
+        run: pio run -e WioTrackerL1_sf6_mapper
+
+      - name: Zbierz pliki
+        run: |
+          VER=$(grep -oP 'MAPPER_FW_VERSION\s+"\K[^"]+' mapper/sf6_mapper/MapperProtocol.h)
+          mkdir -p out
+          cp MeshCore/.pio/build/WioTrackerL1_sf6_mapper/firmware.uf2 out/SF6Mapper-WioTrackerL1-$VER.uf2
+          cp MeshCore/.pio/build/WioTrackerL1_sf6_mapper/firmware.zip out/SF6Mapper-WioTrackerL1-$VER-ota.zip 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SF6Mapper-WioTrackerL1
+          path: out/ 
