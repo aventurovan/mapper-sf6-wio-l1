@@ -46,7 +46,9 @@ jobs:
 
       - name: Buduj
         working-directory: MeshCore
-        run: pio run -e WioTrackerL1_sf6_mapper
+        run: |
+          pio run -e WioTrackerL1_sf6_mapper
+          python3 bin/uf2conv/uf2conv.py .pio/build/WioTrackerL1_sf6_mapper/firmware.hex -c -o .pio/build/WioTrackerL1_sf6_mapper/firmware.uf2 -f 0xADA52840
 
       - name: Zbierz pliki
         run: |
