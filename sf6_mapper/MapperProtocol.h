@@ -6,8 +6,8 @@
  */
 #include <stdint.h>
 
-#define MAPPER_PROTO_VER      2
-#define MAPPER_FW_VERSION     "1.0.3"
+#define MAPPER_PROTO_VER      3
+#define MAPPER_FW_VERSION     "1.1.0"
 
 // aplikacja -> tracker
 #define CMD_MAP_HELLO         0xA0   // []                       -> RESP_MAP_HELLO
@@ -16,6 +16,9 @@
 #define CMD_MAP_SET_RUN       0xA4   // [run u8]                 -> RESP_MAP_RUN
 #define CMD_MAP_SET_INTERVAL  0xA5   // [secs u8] 20/30/40/50/60 -> RESP_MAP_INTERVAL
 #define CMD_MAP_SET_NAME      0xA7   // [nazwa ASCII 2-20 B]     -> RESP_MAP_NAME
+#define CMD_MAP_NAMES_CLEAR   0xA8   // []                       -> RESP_MAP_NAMES [count u16]
+#define CMD_MAP_NAMES_ADD     0xA9   // [n u8][n x (prefix 8 B, len u8, nazwa UTF-8)] -> RESP_MAP_NAMES [count u16]
+#define CMD_MAP_NAMES_SAVE    0xAA   // [crc u32]                -> RESP_MAP_NAMES [count u16]
 
 // podpis Ed25519 kluczem trackera - te same kody i odpowiedzi co companion MeshCore,
 // wiec aplikacja loguje sie trackerem tym samym kodem co companionem
@@ -32,6 +35,7 @@
 #define RESP_MAP_RUN          0xA4
 #define RESP_MAP_INTERVAL     0xA5
 #define RESP_MAP_NAME         0xA7
+#define RESP_MAP_NAMES        0xA8   // [count u16] (odpowiedz na A8/A9/AA, kod komendy w bajcie 0 to zawsze A8)
 #define RESP_OK               0      // jak RESP_CODE_OK companiona
 #define RESP_SIGN_START       19     // [0][max_len u32]
 #define RESP_SIGNATURE        20     // [podpis 64 B]
@@ -52,6 +56,8 @@
 #define MAP_STATE_STATIONARY  0x04   // pauza - postoj (4 pingi bez ruchu)
 #define MAP_STATE_LOG_FULL    0x08   // pamiec pelna, nowe punkty nie sa zapisywane
 #define MAP_STATE_GPS_OFF     0x10   // GPS wylaczony w menu trackera (od 1.0.3)
+#define MAP_STATE_LOW_BATT    0x20   // slaba bateria - mapowanie wstrzymane (od 1.1.0)
+#define MAP_STATE_USB         0x40   // zasilanie z USB (od 1.1.0)
 
 // interwal pingow (s)
 #define MAP_INTERVAL_MIN      20
@@ -62,8 +68,11 @@ inline bool mapIntervalValid(int s) {
   return s >= MAP_INTERVAL_MIN && s <= MAP_INTERVAL_MAX && (s % MAP_INTERVAL_STEP) == 0;
 }
 
-// pole flags rekordu: bity 0-2 = interwal / 10 (2..6), bity 3-7 zarezerwowane
+// pole flags rekordu: bity 0-2 = interwal / 10 (2..6), bit 3 = mozliwy limit repeatera (pudlo),
+// bity 4-7 = numer sesji (0-15, cyklicznie)
 #define MAP_REC_INTERVAL_MASK 0x07
+#define MAP_REC_LIMIT         0x08
+#define MAP_REC_SESSION_SHIFT 4
 
 #define MAP_PREFIX_LEN        8      // bajty klucza publicznego repeatera
 #define MAP_MAX_RESP          13     // max odpowiedzi w jednym punkcie (miesci sie w ramce 176 B)
@@ -82,7 +91,7 @@ struct __attribute__((packed)) MapRecordHdr {
   int32_t  lon;     // stopnie x 1e6
   int16_t  alt;     // wysokosc npm (m)
   uint8_t  sats;    // liczba satelitow
-  uint8_t  flags;   // bity 0-2: interwal pingow / 10 s; reszta zarezerwowana
+  uint8_t  flags;   // bity 0-2: interwal / 10 s, bit 3: mozliwy limit, bity 4-7: sesja
   uint8_t  n;       // liczba odpowiedzi; 0 = pudlo (brak odpowiedzi)
 };
 

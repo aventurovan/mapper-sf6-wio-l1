@@ -1,41 +1,14 @@
 #pragma once
 #include <Arduino.h>
 #include <target.h>
+#include "MapperScreens.h"
 
 #ifdef PIN_BUZZER
   #include <helpers/ui/buzzer.h>
 #endif
 
-#ifndef UI_SCREEN_TIMEOUT_MS
-  #define UI_SCREEN_TIMEOUT_MS  60000UL   // wygaszenie ekranu po 60 s bez przycisku
-#endif
-#ifndef UI_MENU_TIMEOUT_MS
-  #define UI_MENU_TIMEOUT_MS    30000UL   // powrot z menu do ekranu stanu
-#endif
-#define UI_CONFIRM_MS           4000UL    // czas na potwierdzenie STOP w menu
-
-struct MapperStatus {
-  bool     run;
-  bool     gps_on;
-  bool     gps_fix;
-  bool     stationary;
-  bool     log_full;
-  bool     ble_on;
-  bool     ble_connected;
-  bool     syncing;
-  int      sats;
-  uint32_t pings;          // od wlaczenia
-  uint32_t hits;           // pingi z co najmniej jedna odpowiedzia
-  uint32_t pending;        // punkty czekajace na wyslanie
-  uint16_t batt_mv;
-  int      next_ping_secs;
-  int      interval_s;
-  int      last_n;         // liczba odpowiedzi w ostatnim pingu (-1 = brak)
-  uint8_t  last_prefix[2]; // najlepszy repeater ostatniego pingu
-  int8_t   last_snr_rx;
-  int8_t   last_snr_tx;
-  char     name[24];
-};
+#define UI_MENU_TIMEOUT_MS   30000UL   // powrot z menu do ekranu glownego
+#define UI_CONFIRM_MS        4000UL    // czas na potwierdzenie STOP w menu
 
 // sterowanie trackerem z menu (implementacja w main.cpp)
 class MapperControl {
@@ -46,48 +19,70 @@ public:
   virtual bool isBleOn() = 0;          virtual void setBleOn(bool on) = 0;
   virtual bool isBuzzerOn() = 0;       virtual void setBuzzerOn(bool on) = 0;
   virtual bool isLockOn() = 0;         virtual void setLockOn(bool on) = 0;
-  virtual int  getInfoLines(char lines[][22], int max) = 0;   // strona "Informacje"
+  virtual int  getTimeoutIdx() = 0;    virtual void setTimeoutIdx(int i) = 0;   // 0=30 s, 1=1 min, 2=2 min, 3=nigdy
+  virtual bool isUsb() = 0;
+  virtual void newSession() = 0;
+  virtual uint32_t pendingCount() = 0;
+  virtual void clearBonds() = 0;
+  virtual void eraseData() = 0;
+  virtual void factoryReset() = 0;     // restart trackera
+  virtual void newIdentity() = 0;      // restart trackera
+  virtual void powerOff() = 0;
+  virtual int  getInfoLines(char lines[][MAP_LINE_SZ], int max) = 0;
 };
 
 class MapperUI {
-  enum Screen { SCR_STATUS, SCR_MENU, SCR_INFO };
+public:
+  enum Beep { BEEP_HIT, BEEP_WARN, BEEP_OK };
+private:
+  enum Screen { SCR_MAIN, SCR_MENU, SCR_SERVICE, SCR_INFO, SCR_CONFIRM };
+  enum Confirm { CF_NONE, CF_ERASE, CF_BONDS, CF_FACTORY, CF_NEWID1, CF_NEWID2, CF_POWER };
 #ifdef DISPLAY_CLASS
   DisplayDriver* _disp;
 #endif
+  MapperGfx      _g;
   MapperControl* _ctl;
   Screen   _screen;
-  int      _sel;              // zaznaczona pozycja menu
-  int      _top;              // pierwsza widoczna pozycja menu
+  Confirm  _confirm;
+  int      _page;             // ekran glowny: 0 = stan, 1 = sesja, 2 = GPS
+  int      _sel, _top;        // menu
+  int      _ssel, _stop;      // menu "Serwis"
   bool     _locked;
+  bool     _blink;
+  bool     _on;               // ekran wlaczony
   unsigned long _last_activity;
   unsigned long _next_refresh;
-  unsigned long _stop_armed;  // pierwsze nacisniecie "STOP" w menu
-  unsigned long _flash_until; // krotki komunikat na ekranie
-  char     _flash[22];
+  unsigned long _stop_armed;
+  unsigned long _flash_until;
+  unsigned long _hold_start;  // przytrzymanie OK na ekranie potwierdzenia
+  char     _flash1[MAP_LINE_SZ], _flash2[MAP_LINE_SZ];
 #ifdef PIN_BUZZER
   genericBuzzer _buzzer;
 #endif
 
+  unsigned long timeoutMs();
   void render(const MapperStatus& st);
-  void renderStatus(const MapperStatus& st);
-  void renderMenu(const MapperStatus& st);
-  void renderInfo();
   void menuAction(int item, int dir);
-  void flash(const char* msg);
+  void serviceAction(int item);
+  void confirmDone();
   void screenOff();
-  bool screenOn() const;
+  void screenOn();
 
 public:
-  MapperUI() : _ctl(NULL), _screen(SCR_STATUS), _sel(0), _top(0), _locked(false), _last_activity(0),
-               _next_refresh(0), _stop_armed(0), _flash_until(0) {
+  MapperUI() : _ctl(NULL), _screen(SCR_MAIN), _confirm(CF_NONE), _page(0), _sel(0), _top(0), _ssel(0), _stop(0),
+               _locked(false), _blink(false), _on(false), _last_activity(0), _next_refresh(0), _stop_armed(0),
+               _flash_until(0), _hold_start(0) {
 #ifdef DISPLAY_CLASS
     _disp = NULL;
 #endif
-    _flash[0] = 0;
+    _flash1[0] = _flash2[0] = 0;
   }
   void begin(bool has_display, MapperControl* ctl);
   void loop(const MapperStatus& st);
-  void notifyHit();      // krotki sygnal po trafieniu
-  void applyBuzzer();    // po zmianie ustawienia dzwieku
-  void wake() { _last_activity = millis(); _next_refresh = 0; }
+  void beep(Beep b);
+  void applyBuzzer();
+  void flash(const char* l1, const char* l2 = NULL, unsigned long ms = 1800);
+  void wake();
+  void showNow(const char* l1, const char* l2);   // natychmiastowy komunikat (np. przed wylaczeniem)
+  bool isLocked() const { return _locked; }
 };

@@ -237,3 +237,13 @@ void MapLog::compact() {
   _fs->rename(MAP_TMP_FILE, MAP_LOG_FILE);
   scan();
 }
+
+void MapLog::eraseAll() {
+  _fs->remove(MAP_LOG_FILE);
+  _fs->remove(MAP_TMP_FILE);
+  _acked_seq = _next_seq - 1;
+  _file_bytes = 0;
+  _pending = 0;
+  _cur_off = 0; _cur_seq = 0;
+  saveState();
+}

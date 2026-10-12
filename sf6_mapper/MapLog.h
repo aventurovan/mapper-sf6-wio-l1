@@ -47,6 +47,9 @@ public:
   // aplikacja potwierdza zapis na serwerze wszystkich punktow <= up_to_seq
   void ack(uint32_t up_to_seq);
 
+  // kasuje wszystkie punkty; numeracja leci dalej (serwer odrzuca duplikaty po numerze)
+  void eraseAll();
+
   uint32_t pending() const { return _pending; }
   uint32_t total() const { return _total; }
   uint32_t lastSeq() const { return _next_seq - 1; }

@@ -19,35 +19,58 @@ Działa bez telefonu. Dane zrzuca się później przez BLE do aplikacji Mapper S
 
 ## Obsługa
 
-**Ekran stanu**
+**Ekran główny** – trzy strony, przełączane joystickiem w lewo/prawo:
+1. **Stan:**
+   - pasek: godzina (czas polski z GPS), GPS z liczbą satelitów, Bluetooth, dźwięk, bateria;
+   - stan mapowania z odliczaniem;
+   - duże liczby pingów w sesji i punktów do wysłania;
+   - ostatni repeater z SNR.
+2. **Sesja:** numer, dystans, pingi, skuteczność, czas oraz 5 ostatnich repeaterów z godziną i SNR.
+3. **GPS:** satelity, ruch lub postój, współrzędne, wysokość, data i godzina.
 
-| Przycisk | Akcja |
-|---|---|
-| Środek joysticka | otwiera menu |
-| Przycisk wstecz | gasi ekran (z blokadą: od razu blokuje) |
+**Przyciski na ekranie głównym:** środek joysticka otwiera menu, przycisk wstecz gasi ekran.
 
-**Menu**: góra/dół wybiera pozycję, środek lub prawo zmienia wartość, lewo zmienia w drugą stronę, wstecz wraca do ekranu stanu.
-Menu zamyka się samo po 30 s bez przycisku.
+**Menu:** góra i dół wybierają pozycję, środek lub prawo zmienia wartość, lewo zmienia w drugą stronę, wstecz wychodzi.
+Menu zamyka się samo po 30 s.
 
 | Pozycja | Działanie |
 |---|---|
-| Mapowanie | WŁ / STOP; STOP wymaga drugiego naciśnięcia w ciągu 4 s („STOP? OK”) |
+| Mapowanie | WŁ / STOP; STOP wymaga drugiego naciśnięcia w ciągu 4 s |
 | Ping co | 20 / 30 / 40 / 50 / 60 s |
-| Dźwięk | sygnał trafienia wł./wył. |
+| Nowa sesja | zeruje liczniki sesji (każde włączenie trackera to też nowa sesja) |
+| Dźwięk | sygnał trafienia i ostrzeżeń |
 | GPS | wł./wył.; wyłączony GPS oszczędza baterię, ale tracker wtedy nie mapuje |
-| Bluetooth | wł./wył.; wyłączony – tracker niewidoczny dla telefonu, aby zrzucić dane, włącz z powrotem |
+| Bluetooth | wł./wył. |
 | Blokada | blokada ekranu wł./wył. |
-| Informacje | nazwa, PIN Bluetooth, początek klucza, wersja firmware, zajętość pamięci |
+| Wygaszanie | 30 s / 1 min / 2 min / nigdy; przy zasilaniu z USB ekran nie gaśnie |
+| Informacje | nazwa, PIN BT, klucz, firmware, pamięć, ostatni zrzut, liczba nazw RPT |
+| Serwis | usuń dane, usuń parowania BT, ustawienia fabryczne, nowa tożsamość |
+| Wyłącz | uśpienie trackera; włączenie: naciśnij środek joysticka |
+
+**Operacje z menu Serwis i wyłączanie** wymagają przytrzymania środka joysticka (2–3 s, z paskiem postępu):
+- **Usuń dane:** kasuje punkty. Ostrzega, ile z nich nie zostało wysłanych.
+- **Usuń parowania BT:** telefony trzeba będzie sparować ponownie.
+- **Ustawienia fabryczne:** usuwa ustawienia, nazwę, dane, nazwy repeaterów i parowania BT. Klucz zostaje, więc tracker wraca na to samo konto, choć z nazwą `SF6Map-XXXX`.
+- **Nowa tożsamość:** jak ustawienia fabryczne, ale z nowym kluczem, czyli nowym kontem. Wymaga dwóch kroków.
 
 Wszystkie ustawienia zostają po wyłączeniu trackera.
 
-**Blokada ekranu** (domyślnie włączona). Gdy ekran zgaśnie (po 60 s albo przyciskiem wstecz), tracker się blokuje.
-Naciśnięcie dowolnego przycisku tylko zapala ekran i pokazuje stan z napisem „BLOKADA: trzymaj OK”.
-Odblokowanie: przytrzymaj środek joysticka przez 1 s. Przypadkowe naciśnięcia w kieszeni nie zmienią więc ustawień
-ani nie zatrzymają mapowania.
+**Blokada ekranu** (domyślnie włączona). Gdy ekran zgaśnie, tracker się blokuje. Przycisk tylko zapala ekran, a odblokowanie
+wymaga przytrzymania środka joysticka przez 1 s. Przy zasilaniu z USB (tryb samochodowy) blokada i wygaszanie są wyłączone.
 
 **Postój:** po 4 pingach w jednym miejscu tracker przestaje nadawać. Wznawia pracę dopiero przy prawdziwym ruchu,
 czyli przemieszczeniu w ciągu ~20 s. Skok pozycji po ponownym złapaniu GPS albo odbicia sygnału nie wznawiają pingów.
+
+**Nazwy repeaterów:** aplikacja Mapper SF6 wysyła je przy połączeniu i przy zrzucie danych. Ekran pokazuje wtedy np.
+„Skrzyczne” zamiast początku klucza.
+
+**Ostrzeżenia:**
+- **Pamięć:** przy 80%, 90% i 100% zajętości pojawia się komunikat i sygnał.
+- **Słaba bateria (< 3,4 V):** mapowanie zostaje wstrzymane i wznawia się powyżej 3,55 V albo po podłączeniu USB.
+- **Rozładowana bateria (< 3,3 V):** tracker sam się wyłącza, żeby nie uszkodzić zapisu.
+
+**Możliwy limit repeatera:** pudło, przy którym któryś repeater odpowiedział nam już 4 razy w ostatnich 2 minutach,
+dostaje znacznik. Na serwerze trafia on do kolumny `lim`, a w eksporcie do kolumny `mozliwy_limit`.
 
 ## Budowanie
 
