@@ -111,7 +111,10 @@ void MapperUI::render(const MapperStatus& st) {
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
   d->setCursor(0, 0);
-  d->print("SF6 Mapper");
+  char nm[13];
+  strncpy(nm, st.name[0] ? st.name : "SF6 Mapper", 12);
+  nm[12] = 0;
+  d->print(nm);
   snprintf(buf, sizeof(buf), "%s%3d%%", st.ble_connected ? "BT " : "", pct);
   d->drawTextRightAlign(d->width() - 1, 0, buf);
 

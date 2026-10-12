@@ -1,8 +1,10 @@
-# SF6 Mapper – protokół BLE (wersja 1)
+# SF6 Mapper – protokół BLE (wersja 2, firmware 1.0.2)
 
 Tracker używa tej samej usługi BLE co companion MeshCore (Nordic UART / BLEUart,
-PIN parowania 123456). Nazwa urządzenia: `MeshCore-SF6Map-XXXX`, gdzie XXXX to
-pierwsze 2 bajty klucza publicznego. Każdy zapis BLE to jedna ramka; pierwszy
+PIN parowania 123456). Nazwa BLE to zawsze `MeshCore-` + nazwa trackera.
+Domyślnie jest to `MeshCore-SF6Map-XXXX`, gdzie XXXX to pierwsze 2 bajty klucza
+publicznego, a po ustawieniu nazwy np. `MeshCore-Pawlo_T1`. Nazwa trackera jest
+nickiem jego konta w Mapperze (każdy tracker ma osobne konto). Każdy zapis BLE to jedna ramka; pierwszy
 bajt to kod. Liczby wielobajtowe są little-endian.
 
 ## Wykrycie trackera
@@ -19,6 +21,10 @@ Zwykły companion odpowie błędem `0x01`, więc aplikacja wie, z czym rozmawia.
 | `0xA3` | ACK | `up_to_seq u32` |
 | `0xA4` | SET_RUN | `run u8` (0 = stop, 1 = mapuj) |
 | `0xA5` | SET_INTERVAL | `secs u8`: 20, 30, 40, 50 albo 60 |
+| `0xA7` | SET_NAME | nazwa ASCII 2–20 znaków (bez spacji i polskich liter) |
+| `33` | SIGN_START | – (jak w companionie) |
+| `34` | SIGN_DATA | dane do podpisu, w kawałkach (łącznie maks. 512 B) |
+| `35` | SIGN_FINISH | – |
 
 ## Odpowiedzi (tracker → aplikacja)
 
@@ -38,7 +44,8 @@ Zwykły companion odpowie błędem `0x01`, więc aplikacja wie, z czym rozmawia.
 | lat, lon | i32, i32 | bieżąca pozycja (stopnie × 1e6, 0 gdy brak fixu) |
 | log_bytes, log_cap | u32, u32 | zajętość i pojemność pamięci logu |
 | interval | u8 | interwał pingów (s) |
-| fw | tekst | wersja firmware (do końca ramki) |
+| fw_len, fw | u8 + tekst | wersja firmware |
+| name_len, name | u8 + tekst | nazwa trackera (nick konta) |
 
 **`0xA1` RECORD** – jeden punkt, wysyłany po GET:
 
@@ -71,11 +78,21 @@ Repeater rozpoznajemy po 8-bajtowym prefiksie klucza w `nodes.json`.
 
 **`0xA5` INTERVAL** – `secs u8` (aktualny interwał po zmianie)
 
-**`0x01` ERR** – `err u8`: 1 nieznana komenda, 2 złe argumenty (np. niedozwolony interwał), 3 zajęty (ACK w trakcie GET)
+**`0xA7` NAME** – nowa nazwa (tekst do końca ramki). W nazwie BLE zmiana jest
+widoczna od następnego rozgłoszenia, czyli po rozłączeniu telefonu.
+
+**Podpis (logowanie do Mappera)** – identycznie jak w companionie MeshCore:
+`33` → `19` `[0][max_len u32]`; każde `34` → `0` (OK); `35` → `20` `[podpis Ed25519 64 B]`.
+Podpisywane są surowe bajty przekazane w `34`. Błąd stanu (np. `34` bez `33`)
+zwraca `0x01` z kodem 4, przekroczenie 512 B – kod 5.
+
+**`0x01` ERR** – `err u8`: 1 nieznana komenda, 2 złe argumenty (np. niedozwolony interwał lub nazwa), 3 zajęty (ACK w trakcie GET), 4 zły stan, 5 za dużo danych do podpisu
 
 ## Synchronizacja (zalecany przebieg)
 
-1. HELLO → odczytaj `pubkey`, `pending`, `acked_seq`.
+1. HELLO → odczytaj `pubkey`, `name`, `pending`, `acked_seq`.
+   Zaloguj się do Mappera kluczem trackera: wyzwanie z `api.php?action=challenge`
+   podpisz komendami `33/34/35`, nick = `name`.
 2. GET(`acked_seq + 1`, 200) → zbieraj RECORD aż do END.
 3. Wyślij paczkę na serwer. **Dopiero po potwierdzeniu zapisu przez serwer**
    wyślij ACK(`last_seq` z END). Tracker usuwa punkty dopiero po ACK.

@@ -12,7 +12,10 @@ Działa bez telefonu. Dane zrzuca się później przez BLE do aplikacji Mapper S
   Pojemność to 1.5 MB, czyli około 35–40 tys. punktów.
 - Po 4 pingach bez ruchu (przesunięcie poniżej 30 m) robi pauzę i nie nadaje. Wznawia po przemieszczeniu.
 - Nie przekazuje pakietów i nie wysyła adwertów. Jest niewidoczny w sieci poza samymi pingami.
-- Ma własny klucz publiczny, który identyfikuje mappera w systemie.
+- Ma własny klucz publiczny i nazwę. Każdy tracker to osobne konto w Mapperze, a nazwa trackera jest nickiem.
+  Nazwa BLE to zawsze `MeshCore-` + nazwa, np. `MeshCore-Pawlo_T1`. Domyślnie jest to `MeshCore-SF6Map-XXXX`.
+  Nazwę ustawia się z aplikacji: 2–20 znaków ASCII, bez spacji i polskich liter.
+  Tracker podpisuje wyzwanie logowania swoim kluczem tak samo jak companion.
 
 ## Obsługa
 

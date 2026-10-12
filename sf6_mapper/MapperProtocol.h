@@ -6,8 +6,8 @@
  */
 #include <stdint.h>
 
-#define MAPPER_PROTO_VER      1
-#define MAPPER_FW_VERSION     "1.0.1"
+#define MAPPER_PROTO_VER      2
+#define MAPPER_FW_VERSION     "1.0.2"
 
 // aplikacja -> tracker
 #define CMD_MAP_HELLO         0xA0   // []                       -> RESP_MAP_HELLO
@@ -15,6 +15,13 @@
 #define CMD_MAP_ACK           0xA3   // [up_to_seq u32]          -> RESP_MAP_ACK
 #define CMD_MAP_SET_RUN       0xA4   // [run u8]                 -> RESP_MAP_RUN
 #define CMD_MAP_SET_INTERVAL  0xA5   // [secs u8] 20/30/40/50/60 -> RESP_MAP_INTERVAL
+#define CMD_MAP_SET_NAME      0xA7   // [nazwa ASCII 2-20 B]     -> RESP_MAP_NAME
+
+// podpis Ed25519 kluczem trackera - te same kody i odpowiedzi co companion MeshCore,
+// wiec aplikacja loguje sie trackerem tym samym kodem co companionem
+#define CMD_SIGN_START        33     // []                       -> RESP_SIGN_START
+#define CMD_SIGN_DATA         34     // [dane...]                -> RESP_OK
+#define CMD_SIGN_FINISH       35     // []                       -> RESP_SIGNATURE
 
 // tracker -> aplikacja
 #define RESP_MAP_ERR          0x01   // [err u8]  (ten sam kod co RESP_CODE_ERR companiona)
@@ -24,10 +31,20 @@
 #define RESP_MAP_ACK          0xA3
 #define RESP_MAP_RUN          0xA4
 #define RESP_MAP_INTERVAL     0xA5
+#define RESP_MAP_NAME         0xA7
+#define RESP_OK               0      // jak RESP_CODE_OK companiona
+#define RESP_SIGN_START       19     // [0][max_len u32]
+#define RESP_SIGNATURE        20     // [podpis 64 B]
 
 #define MAP_ERR_UNKNOWN_CMD   1
 #define MAP_ERR_BAD_ARGS      2
 #define MAP_ERR_BUSY          3
+#define MAP_ERR_BAD_STATE     4      // np. SIGN_DATA bez SIGN_START
+#define MAP_ERR_TOO_LONG      5      // za duzo danych do podpisu
+
+#define MAP_NAME_MIN          2
+#define MAP_NAME_MAX          20     // "MeshCore-" + 20 znakow miesci sie w rozgloszeniu BLE
+#define MAP_SIGN_MAX          512    // max bajtow danych do podpisu
 
 // flagi stanu w RESP_MAP_HELLO
 #define MAP_STATE_RUN         0x01   // mapowanie wlaczone

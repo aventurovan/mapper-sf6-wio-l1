@@ -16,6 +16,7 @@
 #include <helpers/nrf52/SerialBLEInterface.h>
 #include <InternalFileSystem.h>
 #include <CustomLFS_QSPIFlash.h>
+#include <bluefruit.h>
 
 #include "MapperProtocol.h"
 #include "MapperMesh.h"
@@ -55,7 +56,13 @@ SerialBLEInterface ble;
 MapperUI ui;
 MapperStatus status;
 
-static char ble_name[24];
+static char tracker_name[MAP_NAME_MAX + 1];          // nazwa trackera = nick konta w Mapperze
+static char ble_full_name[sizeof(BLE_NAME_PREFIX) + MAP_NAME_MAX + 1];
+
+// podpis (logowanie do Mappera)
+static uint8_t  sign_buf[MAP_SIGN_MAX];
+static uint16_t sign_len = 0;
+static bool     sign_active = false;
 
 // stan mapowania
 static bool     run_mapping = true;
@@ -113,21 +120,39 @@ static uint8_t stateFlags() {
 struct __attribute__((packed)) MapperSettings {
   uint8_t magic;
   uint8_t interval_s;
+  char    name[MAP_NAME_MAX + 1];   // od v1.0.2
 };
 #define SETTINGS_MAGIC  0x5A
+
+static bool nameValid(const char* n, int len) {
+  if (len < MAP_NAME_MIN || len > MAP_NAME_MAX) return false;
+  for (int i = 0; i < len; i++) {
+    if (n[i] < 0x21 || n[i] > 0x7E) return false;   // ASCII bez spacji i znakow sterujacych
+  }
+  return true;
+}
 
 static void loadSettings() {
   File f = InternalFS.open(SETTINGS_FILE, FILE_O_READ);
   if (!f) return;
   MapperSettings st;
-  if (f.read((uint8_t*)&st, sizeof(st)) == sizeof(st) && st.magic == SETTINGS_MAGIC && mapIntervalValid(st.interval_s)) {
-    interval_s = st.interval_s;
-  }
+  memset(&st, 0, sizeof(st));
+  int n = f.read((uint8_t*)&st, sizeof(st));
   f.close();
+  if (n < 2 || st.magic != SETTINGS_MAGIC) return;
+  if (mapIntervalValid(st.interval_s)) interval_s = st.interval_s;
+  if (n == sizeof(st)) {                            // plik z v1.0.2+ zawiera nazwe
+    st.name[MAP_NAME_MAX] = 0;
+    if (nameValid(st.name, strlen(st.name))) strcpy(tracker_name, st.name);
+  }
 }
 
 static void saveSettings() {
-  MapperSettings st = { SETTINGS_MAGIC, interval_s };
+  MapperSettings st;
+  memset(&st, 0, sizeof(st));
+  st.magic = SETTINGS_MAGIC;
+  st.interval_s = interval_s;
+  strncpy(st.name, tracker_name, MAP_NAME_MAX);
   InternalFS.remove(SETTINGS_FILE);
   File f = InternalFS.open(SETTINGS_FILE, FILE_O_WRITE);
   if (!f) return;
@@ -216,6 +241,23 @@ static void mappingLoop() {
   if ((long)(millis() - next_ping_at) >= 0) startPing();
 }
 
+// ---------------- nazwa BLE ----------------
+// pelna nazwa rozgloszeniowa: "MeshCore-" + nazwa trackera (filtr aplikacji szuka "MeshCore")
+static void buildBleName() {
+  snprintf(ble_full_name, sizeof(ble_full_name), "%s%s", BLE_NAME_PREFIX, tracker_name);
+}
+
+// zmiana nazwy w trakcie pracy: nowa nazwa w GAP i w odpowiedzi na skanowanie;
+// zadziala od nastepnego rozgloszenia (po rozlaczeniu telefonu)
+static void applyBleName() {
+  buildBleName();
+  Bluefruit.setName(ble_full_name);
+  Bluefruit.ScanResponse.clearData();
+  Bluefruit.ScanResponse.addName();
+  strncpy(status.name, tracker_name, sizeof(status.name) - 1);
+  status.name[sizeof(status.name) - 1] = 0;
+}
+
 // ---------------- protokol BLE ----------------
 static void sendErr(uint8_t err) {
   uint8_t f[2] = { RESP_MAP_ERR, err };
@@ -246,7 +288,11 @@ static void sendHello() {
   frame[i++] = interval_s;
   const char* fw = MAPPER_FW_VERSION;
   int fl = strlen(fw);
+  frame[i++] = (uint8_t) fl;
   memcpy(&frame[i], fw, fl); i += fl;
+  int nl = strlen(tracker_name);
+  frame[i++] = (uint8_t) nl;
+  memcpy(&frame[i], tracker_name, nl); i += nl;
   ble.writeFrame(frame, i);
 }
 
@@ -298,6 +344,50 @@ static void handleBleFrame(const uint8_t* cmd, size_t len) {
       if (len < 2 || !setInterval(cmd[1])) { sendErr(MAP_ERR_BAD_ARGS); break; }
       uint8_t f[2] = { RESP_MAP_INTERVAL, interval_s };
       ble.writeFrame(f, 2);
+      break;
+    }
+
+    case CMD_MAP_SET_NAME: {
+      int nl = (int)len - 1;
+      if (!nameValid((const char*)&cmd[1], nl)) { sendErr(MAP_ERR_BAD_ARGS); break; }
+      memcpy(tracker_name, &cmd[1], nl);
+      tracker_name[nl] = 0;
+      saveSettings();
+      applyBleName();
+      frame[0] = RESP_MAP_NAME;
+      memcpy(&frame[1], tracker_name, nl);
+      ble.writeFrame(frame, 1 + nl);
+      break;
+    }
+
+    case CMD_SIGN_START: {
+      sign_active = true;
+      sign_len = 0;
+      uint8_t f[6] = { RESP_SIGN_START, 0, 0, 0, 0, 0 };
+      uint32_t mx = MAP_SIGN_MAX;
+      memcpy(&f[2], &mx, 4);
+      ble.writeFrame(f, 6);
+      break;
+    }
+
+    case CMD_SIGN_DATA: {
+      if (!sign_active) { sendErr(MAP_ERR_BAD_STATE); break; }
+      if (len < 2) { sendErr(MAP_ERR_BAD_ARGS); break; }
+      if (sign_len + (len - 1) > MAP_SIGN_MAX) { sign_active = false; sendErr(MAP_ERR_TOO_LONG); break; }
+      memcpy(&sign_buf[sign_len], &cmd[1], len - 1);
+      sign_len += len - 1;
+      uint8_t f[1] = { RESP_OK };
+      ble.writeFrame(f, 1);
+      break;
+    }
+
+    case CMD_SIGN_FINISH: {
+      if (!sign_active) { sendErr(MAP_ERR_BAD_STATE); break; }
+      frame[0] = RESP_SIGNATURE;
+      the_mesh.self_id.sign(&frame[1], sign_buf, sign_len);
+      sign_active = false;
+      sign_len = 0;
+      ble.writeFrame(frame, 1 + SIGNATURE_SIZE);
       break;
     }
 
@@ -394,13 +484,15 @@ void setup() {
   sensors.setSettingValue("gps", "1");
 
   // BLE: nazwa MeshCore-SF6Map-XXXX (XXXX = poczatek klucza publicznego)
-  snprintf(ble_name, sizeof(ble_name), "SF6Map-%02X%02X", the_mesh.self_id.pub_key[0], the_mesh.self_id.pub_key[1]);
-  ble.begin(BLE_NAME_PREFIX, ble_name, BLE_PIN_CODE);
+  if (tracker_name[0] == 0) {   // domyslna nazwa: SF6Map-XXXX (poczatek klucza)
+    snprintf(tracker_name, sizeof(tracker_name), "SF6Map-%02X%02X", the_mesh.self_id.pub_key[0], the_mesh.self_id.pub_key[1]);
+  }
+  ble.begin(BLE_NAME_PREFIX, tracker_name, BLE_PIN_CODE);
   ble.enable();
 
   memset(&status, 0, sizeof(status));
   status.last_n = -1;
-  strncpy(status.name, ble_name, sizeof(status.name) - 1);
+  strncpy(status.name, tracker_name, sizeof(status.name) - 1);
 
   ui.begin(has_display);
   next_ping_at = millis() + 3000;
