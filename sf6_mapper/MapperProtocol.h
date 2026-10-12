@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #define MAPPER_PROTO_VER      2
-#define MAPPER_FW_VERSION     "1.0.2"
+#define MAPPER_FW_VERSION     "1.0.3"
 
 // aplikacja -> tracker
 #define CMD_MAP_HELLO         0xA0   // []                       -> RESP_MAP_HELLO
@@ -51,6 +51,7 @@
 #define MAP_STATE_GPS_FIX     0x02   // jest fix GPS
 #define MAP_STATE_STATIONARY  0x04   // pauza - postoj (4 pingi bez ruchu)
 #define MAP_STATE_LOG_FULL    0x08   // pamiec pelna, nowe punkty nie sa zapisywane
+#define MAP_STATE_GPS_OFF     0x10   // GPS wylaczony w menu trackera (od 1.0.3)
 
 // interwal pingow (s)
 #define MAP_INTERVAL_MIN      20

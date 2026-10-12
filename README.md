@@ -10,7 +10,7 @@ Działa bez telefonu. Dane zrzuca się później przez BLE do aplikacji Mapper S
   Przez 10 s zbiera odpowiedzi.
 - Każdy ping zapisuje z pozycją do flasha QSPI: trafienie (lista repeaterów z SNR w obie strony i RSSI) albo pudło.
   Pojemność to 1.5 MB, czyli około 35–40 tys. punktów.
-- Po 4 pingach bez ruchu (przesunięcie poniżej 30 m) robi pauzę i nie nadaje. Wznawia po przemieszczeniu.
+- Po 4 pingach bez ruchu robi pauzę i nie nadaje. Wznawia dopiero przy prawdziwym ruchu (szczegóły w punkcie „Postój”).
 - Nie przekazuje pakietów i nie wysyła adwertów. Jest niewidoczny w sieci poza samymi pingami.
 - Ma własny klucz publiczny i nazwę. Każdy tracker to osobne konto w Mapperze, a nazwa trackera jest nickiem.
   Nazwa BLE to zawsze `MeshCore-` + nazwa, np. `MeshCore-Pawlo_T1`. Domyślnie jest to `MeshCore-SF6Map-XXXX`.
@@ -19,18 +19,35 @@ Działa bez telefonu. Dane zrzuca się później przez BLE do aplikacji Mapper S
 
 ## Obsługa
 
+**Ekran stanu**
+
 | Przycisk | Akcja |
 |---|---|
-| Środek joysticka | start / stop mapowania (przy zgaszonym ekranie tylko go budzi) |
-| Środek joysticka – przytrzymanie 1 s | dźwięk trafienia wł./wył. |
-| Joystick lewo / prawo | interwał pingów krócej / dłużej (20–60 s, co 10 s) |
-| Przycisk wstecz | zgaś / zapal ekran |
+| Środek joysticka | otwiera menu |
+| Przycisk wstecz | gasi ekran (z blokadą: od razu blokuje) |
 
-Interwał widać na ekranie w nawiasie (np. `<30s>`). Jest zapamiętywany po wyłączeniu
-i można go też zmienić z aplikacji (komenda `0xA5`). Każdy punkt ma zapisany interwał,
-z jakim powstał.
+**Menu**: góra/dół wybiera pozycję, środek lub prawo zmienia wartość, lewo zmienia w drugą stronę, wstecz wraca do ekranu stanu.
+Menu zamyka się samo po 30 s bez przycisku.
 
-Ekran gaśnie po 60 s bez przycisku.
+| Pozycja | Działanie |
+|---|---|
+| Mapowanie | WŁ / STOP; STOP wymaga drugiego naciśnięcia w ciągu 4 s („STOP? OK”) |
+| Ping co | 20 / 30 / 40 / 50 / 60 s |
+| Dźwięk | sygnał trafienia wł./wył. |
+| GPS | wł./wył.; wyłączony GPS oszczędza baterię, ale tracker wtedy nie mapuje |
+| Bluetooth | wł./wył.; wyłączony – tracker niewidoczny dla telefonu, aby zrzucić dane, włącz z powrotem |
+| Blokada | blokada ekranu wł./wył. |
+| Informacje | nazwa, PIN Bluetooth, początek klucza, wersja firmware, zajętość pamięci |
+
+Wszystkie ustawienia zostają po wyłączeniu trackera.
+
+**Blokada ekranu** (domyślnie włączona). Gdy ekran zgaśnie (po 60 s albo przyciskiem wstecz), tracker się blokuje.
+Naciśnięcie dowolnego przycisku tylko zapala ekran i pokazuje stan z napisem „BLOKADA: trzymaj OK”.
+Odblokowanie: przytrzymaj środek joysticka przez 1 s. Przypadkowe naciśnięcia w kieszeni nie zmienią więc ustawień
+ani nie zatrzymają mapowania.
+
+**Postój:** po 4 pingach w jednym miejscu tracker przestaje nadawać. Wznawia pracę dopiero przy prawdziwym ruchu,
+czyli przemieszczeniu w ciągu ~20 s. Skok pozycji po ponownym złapaniu GPS albo odbicia sygnału nie wznawiają pingów.
 
 ## Budowanie
 

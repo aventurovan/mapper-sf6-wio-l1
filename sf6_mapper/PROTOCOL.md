@@ -1,4 +1,4 @@
-# SF6 Mapper – protokół BLE (wersja 2, firmware 1.0.2)
+# SF6 Mapper – protokół BLE (wersja 2, firmware 1.0.2+)
 
 Tracker używa tej samej usługi BLE co companion MeshCore (Nordic UART / BLEUart,
 PIN parowania 123456). Nazwa BLE to zawsze `MeshCore-` + nazwa trackera.
@@ -33,7 +33,7 @@ Zwykły companion odpowie błędem `0x01`, więc aplikacja wie, z czym rozmawia.
 | Pole | Typ | Opis |
 |---|---|---|
 | proto_ver | u8 | wersja protokołu (1) |
-| flags | u8 | bit0 mapowanie włączone, bit1 fix GPS, bit2 pauza (postój), bit3 pamięć pełna |
+| flags | u8 | bit0 mapowanie włączone, bit1 fix GPS, bit2 pauza (postój), bit3 pamięć pełna, bit4 GPS wyłączony w menu (1.0.3+) |
 | pubkey | 32 B | klucz publiczny trackera (identyfikator mappera) |
 | pending | u32 | punkty czekające na wysłanie |
 | acked_seq | u32 | ostatni potwierdzony numer |
