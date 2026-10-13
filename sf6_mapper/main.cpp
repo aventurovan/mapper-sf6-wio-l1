@@ -842,8 +842,7 @@ void setup() {
 #ifdef DISPLAY_CLASS
   if (display.begin()) {
     has_display = true;
-    display.startFrame();
-    display.drawTextCentered(display.width() / 2, 28, "SF6 Mapper...");
+    display.startFrame();                           // pusty ekran; animacja startowa rusza w ui.begin()
     display.endFrame();
   }
 #endif

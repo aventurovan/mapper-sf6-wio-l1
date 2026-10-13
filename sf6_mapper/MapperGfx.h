@@ -37,6 +37,8 @@ public:
   void iconBell(int x, int y, bool on);              // 7x7
   void iconLock(int x, int y);                       // 7x7
   void progress(int x, int y, int w, int h, int pct);
+  // gorny luk okregu (fala radiowa) o srodku (cx, cy), tylko punkty powyzej cy i w granicach y >= ymin
+  void arcTop(int cx, int cy, int r, int ymin);
 };
 
 // pomocnicze: dlugosc znaku UTF-8 i dekodowanie

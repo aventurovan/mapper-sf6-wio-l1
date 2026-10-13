@@ -1,4 +1,5 @@
 #include "MapperUI.h"
+#include "MapperProtocol.h"
 
 /*
  * Obsluga przyciskow:
@@ -42,6 +43,20 @@ void MapperUI::begin(bool has_display, MapperControl* ctl) {
 #endif
   applyBuzzer();
   screenOn();
+  _screen = SCR_SPLASH;                             // animacja startowa
+  _splash_start = millis();
+}
+
+// koniec animacji: ekran glowny i dwa krotkie piknieca - zawsze, takze przy wyciszonym dzwieku
+void MapperUI::endSplash() {
+  _screen = SCR_MAIN;
+  _last_activity = millis();
+  _next_refresh = 0;
+#ifdef PIN_BUZZER
+  _buzzer.quiet(false);
+  _buzzer.play("start:d=16,o=6,b=200:c,p,c");
+  _restore_quiet = true;
+#endif
 }
 
 void MapperUI::applyBuzzer() {
@@ -160,8 +175,22 @@ void MapperUI::confirmDone() {
 void MapperUI::loop(const MapperStatus& st) {
 #ifdef PIN_BUZZER
   _buzzer.loop();
+  if (_restore_quiet && !_buzzer.isPlaying()) { _restore_quiet = false; applyBuzzer(); }
 #endif
 #ifdef DISPLAY_CLASS
+  if (_screen == SCR_SPLASH) {
+    bool skip = user_btn.check() || back_btn.check() || joystick_left.check() || joystick_right.check()
+             || joystick_up.check() || joystick_down.check();
+    unsigned long t = millis() - _splash_start;
+    if (skip || t >= SPLASH_MS || _disp == NULL) { endSplash(); return; }
+    if ((long)(millis() - _next_refresh) < 0) return;
+    _next_refresh = millis() + 40;                  // ok. 25 klatek/s
+    _disp->startFrame();
+    _g.color(true);
+    drawSplashScreen(_g, t, st.name, MAPPER_FW_VERSION);
+    _disp->endFrame();
+    return;
+  }
   int ev_ok    = user_btn.check();
   int ev_back  = back_btn.check();
   int ev_left  = joystick_left.check();
@@ -180,6 +209,7 @@ void MapperUI::loop(const MapperStatus& st) {
     } else {
       wake();
       switch (_screen) {
+        case SCR_SPLASH: break;
         case SCR_MAIN:
           if (ev_ok == BUTTON_EVENT_CLICK) { _screen = SCR_MENU; _stop_armed = 0; }
           else if (ev_back == BUTTON_EVENT_CLICK) screenOff();
@@ -270,6 +300,7 @@ void MapperUI::render(const MapperStatus& st) {
   _flash_until = 0;
 
   switch (_screen) {
+    case SCR_SPLASH: break;
     case SCR_MAIN:
       if (_page == 1 && !_locked) drawSessionScreen(_g, st);
       else if (_page == 2 && !_locked) drawGpsScreen(_g, st);

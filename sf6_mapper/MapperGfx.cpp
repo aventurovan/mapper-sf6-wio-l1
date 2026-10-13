@@ -158,3 +158,16 @@ void MapperGfx::progress(int x, int y, int w, int h, int pct) {
   int fw = (w - 4) * pct / 100;
   if (fw > 0) _d->fillRect(x + 2, y + 2, fw, h - 4);
 }
+
+void MapperGfx::arcTop(int cx, int cy, int r, int ymin) {
+  if (r <= 0) return;
+  int x = r, y = 0, err = 1 - r;                    // algorytm punktu srodkowego, tylko gorna polowa
+  while (x >= y) {
+    const int px[4] = { cx + x, cx - x, cx + y, cx - y };
+    const int py[4] = { cy - y, cy - y, cy - x, cy - x };
+    for (int i = 0; i < 4; i++) if (py[i] >= ymin && py[i] <= cy) _d->fillRect(px[i], py[i], 1, 1);
+    y++;
+    if (err < 0) err += 2 * y + 1;
+    else { x--; err += 2 * (y - x) + 1; }
+  }
+}

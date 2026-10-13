@@ -202,3 +202,34 @@ void drawMessageScreen(MapperGfx& g, const char* l1, const char* l2) {
   g.textCenter(64, l2 ? 22 : 28, l1);
   if (l2) g.textCenter(64, 34, l2);
 }
+
+// Ekran startowy: "SF6 Mapper" wjezdza z prawej (0,5 s, z wyhamowaniem), pod nim fale radiowe
+// rozchodza sie od punktu, potem nazwa trackera i wersja firmware.
+void drawSplashScreen(MapperGfx& g, unsigned long t, const char* name, const char* version) {
+  const int title_w = g.textWidth("SF6 Mapper", 2);
+  const int x_end = (128 - title_w) / 2;
+  int x = x_end;
+  if (t < 500) {
+    long p = (long)t * 1000 / 500;                  // 0..1000
+    long inv = 1000 - p;
+    long ease = 1000 - inv * inv * inv / 1000000;   // wyhamowanie (ease-out cubic)
+    x = 128 - (int)((128 - x_end) * ease / 1000);
+  }
+  g.text(x, 4, "SF6 Mapper", 2);
+
+  if (t >= 300) {                                   // fale: 3 luki co 6 px, rosna od punktu
+    const int cx = 64, cy = 41;
+    g.rect(cx - 1, cy - 1, 3, 3);
+    unsigned long tw = t - 300;
+    for (int k = 0; k < 3; k++) {
+      int r = (int)((tw / 45 + k * 6) % 18) + 3;
+      g.arcTop(cx, cy, r, 22);
+    }
+  }
+  if (t >= 600 && name && name[0]) g.textCenter(64, 45, name);
+  if (t >= 900 && version) {
+    char b[16];
+    snprintf(b, sizeof(b), "v%s", version);
+    g.textRight(127, 56, b);
+  }
+}

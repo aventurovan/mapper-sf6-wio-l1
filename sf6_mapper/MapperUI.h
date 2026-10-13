@@ -36,7 +36,7 @@ class MapperUI {
 public:
   enum Beep { BEEP_HIT, BEEP_WARN, BEEP_OK };
 private:
-  enum Screen { SCR_MAIN, SCR_MENU, SCR_SERVICE, SCR_INFO, SCR_CONFIRM };
+  enum Screen { SCR_SPLASH, SCR_MAIN, SCR_MENU, SCR_SERVICE, SCR_INFO, SCR_CONFIRM };
   enum Confirm { CF_NONE, CF_ERASE, CF_BONDS, CF_FACTORY, CF_NEWID1, CF_NEWID2, CF_POWER };
 #ifdef DISPLAY_CLASS
   DisplayDriver* _disp;
@@ -56,6 +56,8 @@ private:
   unsigned long _stop_armed;
   unsigned long _flash_until;
   unsigned long _hold_start;  // przytrzymanie OK na ekranie potwierdzenia
+  unsigned long _splash_start;
+  bool     _restore_quiet;    // po dzwieku startowym przywroc ustawienie wyciszenia
   char     _flash1[MAP_LINE_SZ], _flash2[MAP_LINE_SZ];
 #ifdef PIN_BUZZER
   genericBuzzer _buzzer;
@@ -68,11 +70,12 @@ private:
   void confirmDone();
   void screenOff();
   void screenOn();
+  void endSplash();
 
 public:
   MapperUI() : _ctl(NULL), _screen(SCR_MAIN), _confirm(CF_NONE), _page(0), _sel(0), _top(0), _ssel(0), _stop(0),
                _locked(false), _blink(false), _on(false), _last_activity(0), _next_refresh(0), _stop_armed(0),
-               _flash_until(0), _hold_start(0) {
+               _flash_until(0), _hold_start(0), _splash_start(0), _restore_quiet(false) {
 #ifdef DISPLAY_CLASS
     _disp = NULL;
 #endif

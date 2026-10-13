@@ -63,3 +63,6 @@ void drawMenuScreen(MapperGfx& g, const char* title, const char* const* labels, 
 void drawConfirmScreen(MapperGfx& g, const char* title, const char* l1, const char* l2, const char* hint, int pct);
 void drawLinesScreen(MapperGfx& g, const char* title, const char lines[][MAP_LINE_SZ], int n);
 void drawMessageScreen(MapperGfx& g, const char* l1, const char* l2);
+// ekran startowy: t_ms = czas od poczatku animacji
+#define SPLASH_MS  2200
+void drawSplashScreen(MapperGfx& g, unsigned long t_ms, const char* name, const char* version);

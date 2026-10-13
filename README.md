@@ -19,6 +19,10 @@ Działa bez telefonu. Dane zrzuca się później przez BLE do aplikacji Mapper S
 
 ## Obsługa
 
+**Start:** po włączeniu animacja – napis „SF6 Mapper” wjeżdża z prawej, pod nim rozchodzą się fale radiowe, potem pojawia się
+nazwa trackera i wersja firmware. Po ok. 2 s (albo po naciśnięciu dowolnego przycisku) pokazuje się ekran główny z dwoma
+krótkimi piknięciami. Piknięcia brzmią zawsze, także przy dźwięku wyłączonym w menu.
+
 **Ekran główny** – trzy strony, przełączane joystickiem w lewo/prawo:
 1. **Stan:**
    - pasek: godzina (czas polski z GPS), GPS z liczbą satelitów, Bluetooth, dźwięk, bateria;
